@@ -6,12 +6,13 @@
 
 {% else %}
 <table class="table">
-  <thead>
+  <thead class="thead-light">
     <tr>
       <th scope="col">Titre</th>
       <th scope="col">Auteur</th>
       <th scope="col">Type</th>
       <th scope="col">Empruntable</th>
+      <th scope="col"></th>
     </tr>
   </thead>
   <tbody>
@@ -20,7 +21,8 @@
       <td>{{ ref.name }}</td>
       <td>{{ ref.author }}</td>
       <td>{{ ref.ref_type }}</td>
-      <td>{{ ref.borrowable }}</td>
+      <td>{{ ref.borrowable }}</td> <!-- &#x2705; -->
+      <td><a href="{% url 'biblio:booking' reference_id=ref.id %}" class="btn btn-outline-success" role="button">Emprunter</a></td>
     </tr>
     {% endfor %}
   </tbody>

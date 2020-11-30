@@ -108,7 +108,7 @@ class Reference(models.Model):
         return self.name
 
 
-#la classe abonnement
+
 class Subscription(models.Model):
     beginning_date = models.DateField()
     ending_date = models.DateField()
@@ -119,7 +119,7 @@ class Subscription(models.Model):
         return self.user.email
 
 
-#la classe emprunt
+
 class Loan(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, default="")
     reference = models.OneToOneField(Reference, on_delete=models.CASCADE, default="")
@@ -130,7 +130,7 @@ class Loan(models.Model):
         return self.reference.name
 
 
-#la classe mauvais emprunteur
+
 class Bad_borrower(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, default="")
     ending_date = models.DateField()
