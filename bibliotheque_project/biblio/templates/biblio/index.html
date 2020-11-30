@@ -1,0 +1,12 @@
+{% extends 'biblio/base.html' %}
+    
+{% block content %}
+  <form action="{% url 'index' %}" method='get' accept-charset="utf-8">
+    {% csrf_token %}
+    <div class="input-group">
+      <input type="text" class="form-control" placeholder="Taper votre recherche" name="query">
+    </div>
+  </form>
+  {% include 'biblio/list.html' %}
+
+{% endblock %}

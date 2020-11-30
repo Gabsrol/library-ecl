@@ -1,0 +1,29 @@
+{% if references|length_is:"0" %}
+    <div class="text-center">
+      Palsambleu ! Nous n'avons trouvé aucun résultat à cette requête. Même pas de quoi se ronger la chique !
+      Partez de nouveau à l'abordage !
+    </div>
+
+{% else %}
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Titre</th>
+      <th scope="col">Auteur</th>
+      <th scope="col">Type</th>
+      <th scope="col">Empruntable</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ref in references %}
+    <tr>
+      <td>{{ ref.name }}</td>
+      <td>{{ ref.author }}</td>
+      <td>{{ ref.ref_type }}</td>
+      <td>{{ ref.borrowable }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endif %}
