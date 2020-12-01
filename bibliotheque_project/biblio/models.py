@@ -138,3 +138,12 @@ class Bad_borrower(models.Model):
 
     def __str__(self):
         return self.user.email
+
+    # override save method to delete subscription when we add a bad_borrower
+    def save(self, *args, **kwargs):
+        
+        # check if the user had a subscription
+        if Subscription.objects.filter(user__email=self.user.email).exists():
+            Subscription.objects.get(user__email=self.user.email).delete()
+
+        super().save(*args, **kwargs)  # Call the "real" save() method.
