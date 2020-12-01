@@ -53,16 +53,23 @@ class SubscriptionInline(admin.TabularInline):
 
 class LoanCreationForm(forms.ModelForm):
     """A form for creating new loan. Includes all the required
-    fields, plus a repeated password."""
+    fields"""
+
+    class Meta:
+        model = Loan
+        exclude = ('returned',)
 
     # only reference borowable can be borrowed
-    borrowable_ref = Reference.objects.filter(borrowable=True)
+    borrowable_ref = Reference.objects.filter(loan__returned=True).union(Reference.objects.filter(borrowable=False))
     reference = forms.ModelMultipleChoiceField(queryset=borrowable_ref,widget=forms.Select())
 
     # only users that have a subscription can borrow
     user = forms.ModelMultipleChoiceField(queryset=Subscription.objects.all(),widget=forms.Select())
 
 class LoanAdmin(admin.ModelAdmin):
+    # The form to add Subscription instances
+    form = LoanCreationForm
+
     # The fields to be used in displaying the Borrowed model.
     list_display = ('reference', 'user', 'beginning_date', 'ending_date','returned')
 
