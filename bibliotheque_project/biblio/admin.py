@@ -13,6 +13,74 @@ from django.core.exceptions import ValidationError
 
 from biblio.models import User, Reference, Subscription, Bad_borrower, Loan
 
+
+######### Reference ###########
+
+class ReferenceAdmin(admin.ModelAdmin):
+    list_display = ('name',  'author', 'publish_date', 'ref_type', 'borrowable')
+
+
+
+
+
+######### Subscription ###########
+
+# a form to create a subscription
+class SubscriptionCreationForm(forms.ModelForm):
+    """A form for creating new subscriptions."""
+
+    # a field to be sure that the admin has been paid by the user
+    payment = forms.BooleanField (label="L'utilisateur a-t-il bien payé?",required=True)
+
+    # only users that aren't bad borrowers can have a subscription
+    bad_borrowers = Bad_borrower.objects.all()
+    only_good_borrowers = User.objects.exclude(pk__in=bad_borrowers)
+    user = forms.ModelChoiceField(queryset=only_good_borrowers,widget=forms.Select())
+
+
+class SubscriptionAdmin(admin.ModelAdmin):
+    # The form to add Subscription instances
+    form = SubscriptionCreationForm
+
+    # The fields to be used in displaying the Subscription model.
+    list_display = ('user',  'beginning_date', 'ending_date')
+
+class SubscriptionInline(admin.TabularInline):
+    model = Subscription
+
+
+######### Loan ###########
+
+class LoanCreationForm(forms.ModelForm):
+    """A form for creating new loan. Includes all the required
+    fields, plus a repeated password."""
+
+    # only reference borowable can be borrowed
+    borrowable_ref = Reference.objects.filter(borrowable=True)
+    reference = forms.ModelMultipleChoiceField(queryset=borrowable_ref,widget=forms.Select())
+
+    # only users that have a subscription can borrow
+    user = forms.ModelMultipleChoiceField(queryset=Subscription.objects.all(),widget=forms.Select())
+
+class LoanAdmin(admin.ModelAdmin):
+    # The fields to be used in displaying the Borrowed model.
+    list_display = ('reference', 'user', 'beginning_date', 'ending_date','returned')
+
+class LoanInline(admin.TabularInline):
+    model = Loan
+
+
+
+
+######### Bad_borrower ###########
+
+class Bad_borrowerAdmin(admin.ModelAdmin):
+    pass
+
+class Bad_borrowerInline(admin.TabularInline):
+    model = Bad_borrower
+
+
 ######### User ###########
 
 # a form to create a new user
@@ -93,59 +161,12 @@ class UserAdmin(BaseUserAdmin):
     ordering = ('email',)
     filter_horizontal = ()
 
-######### Reference ###########
+    inlines = [
+        SubscriptionInline,
+        LoanInline,
+        Bad_borrowerInline,
+    ]
 
-class ReferenceAdmin(admin.ModelAdmin):
-    list_display = ('name',  'author', 'publish_date', 'ref_type', 'borrowable')
-
-
-
-
-
-######### Subscription ###########
-
-# a form to create a subscription
-class SubscriptionCreationForm(forms.ModelForm):
-    """A form for creating new subscriptions."""
-
-    # a field to be sure that the admin has been paid by the user
-    payment = forms.BooleanField (label="L'utilisateur a-t-il bien payé?",required=True)
-
-    # only users that aren't bad borrowers can have a subscription
-    bad_borrowers = Bad_borrower.objects.all()
-    only_good_borrowers = User.objects.exclude(pk__in=bad_borrowers)
-    user = forms.ModelMultipleChoiceField(queryset=only_good_borrowers,widget=forms.Select())
-
-
-class SubscriptionAdmin(admin.ModelAdmin):
-    # The form to add Subscription instances
-    form = SubscriptionCreationForm
-
-    # The fields to be used in displaying the Subscription model.
-    list_display = ('user',  'beginning_date', 'ending_date')
-
-
-######### Loan ###########
-
-class LoanCreationForm(forms.ModelForm):
-    """A form for creating new loan. Includes all the required
-    fields, plus a repeated password."""
-
-    # only reference borowable can be borrowed
-    borrowable_ref = Reference.objects.filter(borrowable=True)
-    reference = forms.ModelMultipleChoiceField(queryset=borrowable_ref,widget=forms.Select())
-
-    # only users that have a subscription can borrow
-    user = forms.ModelMultipleChoiceField(queryset=Subscription.objects.all(),widget=forms.Select())
-
-class LoanAdmin(admin.ModelAdmin):
-    # The fields to be used in displaying the Borrowed model.
-    list_display = ('reference', 'user', 'beginning_date', 'ending_date')
-
-
-
-class Bad_borrowerAdmin(admin.ModelAdmin):
-    pass
 
 
 # dire à Django quelle table afficher dans la partie admin
