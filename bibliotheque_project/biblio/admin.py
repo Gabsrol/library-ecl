@@ -10,6 +10,8 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.core.exceptions import ValidationError
+from datetime import date
+
 
 from biblio.models import User, Reference, Subscription, Bad_borrower, Loan
 
@@ -45,8 +47,9 @@ class SubscriptionAdmin(admin.ModelAdmin):
     # The fields to be used in displaying the Subscription model.
     list_display = ('user',  'beginning_date', 'ending_date')
 
-class SubscriptionInline(admin.TabularInline):
-    model = Subscription
+# to add a subscription from user creation but I didn't find how to make it optionnal
+#class SubscriptionInline(admin.TabularInline):
+    #model = Subscription
 
 
 ######### Loan ###########
@@ -63,8 +66,18 @@ class LoanCreationForm(forms.ModelForm):
     borrowable_ref = Reference.objects.filter(loan__returned=True).union(Reference.objects.filter(borrowable=False))
     reference = forms.ModelMultipleChoiceField(queryset=borrowable_ref,widget=forms.Select())
 
-    # only users that have a subscription can borrow
-    user = forms.ModelMultipleChoiceField(queryset=Subscription.objects.all(),widget=forms.Select())
+    # only users that have a valid subscription can borrow and that have 3 books and 2 reviews
+    
+    # users with valid subscription
+    today = date.today()
+    valid_subscriptions_users = Subscription.objects.filter(ending_date__gte=today)
+
+    # users with less than 3 books and 2 reviews
+    # # nb books not returned
+    #User.objects.filter( (Q(loan__returned=False) & Q(loan__reference__type='BK'))
+    #users_can_borrow = valid_subscriptions_users.intersection(Loan.objects)
+
+    user = forms.ModelMultipleChoiceField(queryset=valid_subscriptions_users,widget=forms.Select())
 
 class LoanAdmin(admin.ModelAdmin):
     # The form to add Subscription instances
@@ -73,10 +86,8 @@ class LoanAdmin(admin.ModelAdmin):
     # The fields to be used in displaying the Borrowed model.
     list_display = ('reference', 'user', 'beginning_date', 'ending_date','returned')
 
-class LoanInline(admin.TabularInline):
-    model = Loan
-
-
+#class LoanInline(admin.TabularInline):
+#    model = Loan
 
 
 ######### Bad_borrower ###########
@@ -84,8 +95,8 @@ class LoanInline(admin.TabularInline):
 class Bad_borrowerAdmin(admin.ModelAdmin):
     pass
 
-class Bad_borrowerInline(admin.TabularInline):
-    model = Bad_borrower
+#class Bad_borrowerInline(admin.TabularInline):
+#    model = Bad_borrower
 
 
 ######### User ###########
@@ -168,11 +179,11 @@ class UserAdmin(BaseUserAdmin):
     ordering = ('email',)
     filter_horizontal = ()
 
-    inlines = [
-        SubscriptionInline,
-        LoanInline,
-        Bad_borrowerInline,
-    ]
+    #inlines = [
+    #    SubscriptionInline,
+    #    LoanInline,
+    #    Bad_borrowerInline,
+    #]
 
 
 
