@@ -11,6 +11,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.db.models import F
 import datetime
 
 
@@ -81,54 +82,37 @@ class LoanCreationForm(forms.ModelForm):
         model = Loan
         exclude = ('returned',)
 
-    # how many books each user are borrowing
-    #book_not_returned = Count('loan', filter=(Q(loan__returned=False) & Q(loan__reference__ref_type='BK')))
-    # users with at 
-    # # nb books not returned
-    # User.objects.filter( (Q(loan__returned=False) & Q(loan__reference__type='BK'))
-    # Count('Loan', filter=(Q(loan__returned=False) & Q(loan__reference__type='BK')))
-    #users_can_borrow = valid_subscriptions_users.intersection(Loan.objects)
-
-    #user = forms.ModelMultipleChoiceField(queryset=valid_subscriptions_users,widget=forms.Select())
-
-    # validation of user field
-    def clean_user(self):
-
-        user = self.cleaned_data["user"]
-
-        # check if the user has a subscription
-        today = datetime.date.today()
-        valid_subscriptions_users = Subscription.objects.filter(ending_date__gte=today).values_list('user__email',flat=True)
-        if user not in valid_subscriptions_users:
-            raise ValidationError(
-                    "Cet utilisateur n'a pas d'abonnement à jour"
-                )
-
-        return user
-
+    ###### we don't use it here to allow
     # validation of beginning_date
-    def clean_beginning_date(self):
+    #def clean_beginning_date(self):
 
-        date = self.cleaned_data["beginning_date"]
+    #    date = self.cleaned_data["beginning_date"]
 
         # check if the beginning date is superioir to today
-        today = datetime.date.today()
-        if date<today:
-            raise ValidationError(
-                    "La date de début d'emprunt doit être postérieure à la date du jour"
-                )
+    #    today = datetime.date.today()
+    #    if date<today:
+    #        raise ValidationError(
+    #                "La date de début d'emprunt doit être postérieure à la date du jour"
+    #            )
 
-        return date
+    #    return date
 
     # validation of all fields
     def clean(self):
         cleaned_data = super().clean()
         user = cleaned_data.get("user")
-        reference_value = cleaned_data.get("reference")
+        reference = cleaned_data.get("reference")
         beginning_date = cleaned_data.get("beginning_date")
         ending_date = cleaned_data.get("ending_date")
 
-        reference = Reference.objects.get(name=reference_value)
+        # check if the user has a subscription
+        today = datetime.date.today()
+        valid_subscriptions_users = Subscription.objects.filter(ending_date__gte=today).values_list('user__email',flat=True)
+        
+        if user.email not in valid_subscriptions_users:
+            self.add_error('user',
+                    "Cet utilisateur n'a pas d'abonnement à jour"
+                )
 
         # check if the book can be borrowed
         not_borrowable_ref = Reference.objects.filter(loan__returned=False).union(Reference.objects.filter(borrowable=False)).values_list('name',flat=True)
@@ -140,7 +124,7 @@ class LoanCreationForm(forms.ModelForm):
         if reference.ref_type=='BK':
             # books borrowing by the user
             nb_books_not_returned = Loan.objects.filter(
-                    user__email=user
+                    user__email=user.email
                 ).filter(
                     Q(returned=False) 
                     & 
@@ -153,7 +137,7 @@ class LoanCreationForm(forms.ModelForm):
         else:
             # reviews borrowing by the user
             nb_reviews_not_returned = Loan.objects.filter(
-                    user__email=user
+                    user__email=user.email
                 ).filter(
                     Q(returned=False)
                 ).exclude(
@@ -164,16 +148,12 @@ class LoanCreationForm(forms.ModelForm):
             if nb_reviews_not_returned>=2:
                 self.add_error('reference', "Cet utilisateur emprunte déjà 2 revues")
 
-        
         # check if the ending_date is 30 days after beginning date
         if ending_date!=(datetime.timedelta(days=30)+beginning_date):
             self.add_error('ending_date', "La durée d'un emprunt est de 30 jours")
 
         return cleaned_data
     
-
-    
-
 
 class LoanAdmin(admin.ModelAdmin):
     # The form to add Subscription instances
@@ -182,8 +162,37 @@ class LoanAdmin(admin.ModelAdmin):
     # The fields to be used in displaying the Borrowed model.
     list_display = ('reference', 'user', 'beginning_date', 'ending_date','returned')
 
-#class LoanInline(admin.TabularInline):
-#    model = Loan
+    actions = ['return_loan']
+
+    # function to return one or several selected references
+    def return_loan(modeladmin, request, queryset):
+        for q in queryset:
+            # if not already returned
+            if not q.returned:
+
+                today = datetime.date.today()
+                # apply penalties if the book is returned 3 days later
+                if (today-datetime.timedelta(days=3))>q.ending_date:
+                    q.user.balance -= abs((today - q.ending_date).days)
+                    q.user.save()
+
+                # add to bad borrowers if it is the third time he is late
+                nb_lates = Loan.objects.filter(
+                        user=q.user
+                    ).filter(
+                        ending_date__gte=F('beginning_date')+datetime.timedelta(days=30)
+                    ).count()
+                if nb_lates>=3:
+                    bad_user = Bad_borrower.objects.create(user=q.user)
+                    bad_user.save()
+
+
+                q.returned='True' #mark as returned
+                q.ending_date = datetime.date.today() #change ending date to today
+                q.save()
+
+    return_loan.short_description = "Retourner les ouvrages sélectionnés"
+
 
 
 ######### Bad_borrower ###########
@@ -254,7 +263,7 @@ class UserAdmin(BaseUserAdmin):
     # The fields to be used in displaying the User model.
     # These override the definitions on the base UserAdmin
     # that reference specific fields on auth.User.
-    list_display = ('email',  'first_name', 'last_name', 'social_status', 'is_admin')
+    list_display = ('email',  'first_name', 'last_name', 'social_status', 'is_admin','balance')
     list_filter = ('is_admin',)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
@@ -273,11 +282,16 @@ class UserAdmin(BaseUserAdmin):
     ordering = ('email',)
     filter_horizontal = ()
 
-    #inlines = [
-    #    SubscriptionInline,
-    #    LoanInline,
-    #    Bad_borrowerInline,
-    #]
+    actions = ['pay_balance']
+
+    # function to return one or several selected references
+    def pay_balance(modeladmin, request, queryset):
+        for q in queryset:
+            
+            q.balance=0
+            q.save()
+            
+    pay_balance.short_description = "Marquer que l'utilisateur à régler son solde"
 
 
 

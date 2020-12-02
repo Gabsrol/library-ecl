@@ -60,6 +60,7 @@ class User(AbstractBaseUser):
     social_status = models.CharField(max_length=2, choices=SOCIAL_STATUS, default='AU')
     first_name = models.CharField(max_length=60, default='first_name')
     last_name = models.CharField(max_length=60, default='last_name')
+    balance = models.IntegerField(max_length=5, default=0, verbose_name="Solde €")
 
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
@@ -125,7 +126,7 @@ class Loan(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, default="")
     reference = models.ForeignKey(Reference, on_delete=models.CASCADE, default="")
     beginning_date = models.DateField(default=timezone.now())
-    ending_date = models.DateField()
+    ending_date = models.DateField(default=datetime.timedelta(days=30)+timezone.now())
     returned = models.BooleanField(default = False)
 
     def __str__(self):
