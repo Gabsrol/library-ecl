@@ -1,5 +1,6 @@
 from django.db import models
-
+import datetime
+from django.utils import timezone
 from django.contrib.auth.models import (
     BaseUserManager, AbstractBaseUser
 )
@@ -110,8 +111,8 @@ class Reference(models.Model):
 
 
 class Subscription(models.Model):
-    beginning_date = models.DateField()
-    ending_date = models.DateField()
+    beginning_date = models.DateField(default=timezone.now())
+    ending_date = models.DateField(default=(datetime.timedelta(weeks=52)+timezone.now()))
     #A priori le one-to-one accepte le one-to-zero : un client peut avoir un abonnement / un abonnement est forcément lié à un client
     user = models.OneToOneField(User, on_delete=models.CASCADE, default="")
 
@@ -134,7 +135,7 @@ class Loan(models.Model):
 
 class Bad_borrower(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, default="")
-    ending_date = models.DateField()
+    ending_date = models.DateField(default=datetime.timedelta(weeks=101)+timezone.now())
 
     def __str__(self):
         return self.user.email

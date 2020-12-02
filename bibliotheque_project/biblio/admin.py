@@ -10,7 +10,8 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.core.exceptions import ValidationError
-from datetime import date
+from django.db.models import Q
+import datetime
 
 
 from biblio.models import User, Reference, Subscription, Bad_borrower, Loan
@@ -18,7 +19,12 @@ from biblio.models import User, Reference, Subscription, Bad_borrower, Loan
 
 ######### Reference ###########
 
+class ReferenceCreationForm(forms.ModelForm):
+    """A form for creating new references."""
+    pass
+
 class ReferenceAdmin(admin.ModelAdmin):
+    form = ReferenceCreationForm
     list_display = ('name',  'author', 'publish_date', 'ref_type', 'borrowable')
 
 
@@ -38,6 +44,19 @@ class SubscriptionCreationForm(forms.ModelForm):
     bad_borrowers = Bad_borrower.objects.all()
     only_good_borrowers = User.objects.exclude(pk__in=bad_borrowers)
     user = forms.ModelChoiceField(queryset=only_good_borrowers,widget=forms.Select())
+
+    # validation of all fields
+    def clean(self):
+        cleaned_data = super().clean()
+
+        beginning_date = cleaned_data.get("beginning_date")
+        ending_date = cleaned_data.get("ending_date")
+        
+        # check if the ending_date is 30 days after beginning date
+        if ending_date!=(datetime.timedelta(weeks=52)+beginning_date):
+            self.add_error('ending_date', "La durée d'un abonnement est d'1 an")
+
+        return cleaned_data
 
 
 class SubscriptionAdmin(admin.ModelAdmin):
@@ -62,22 +81,99 @@ class LoanCreationForm(forms.ModelForm):
         model = Loan
         exclude = ('returned',)
 
-    # only reference borowable can be borrowed
-    borrowable_ref = Reference.objects.filter(loan__returned=True).union(Reference.objects.filter(borrowable=False))
-    reference = forms.ModelMultipleChoiceField(queryset=borrowable_ref,widget=forms.Select())
-
-    # only users that have a valid subscription can borrow and that have 3 books and 2 reviews
-    
-    # users with valid subscription
-    today = date.today()
-    valid_subscriptions_users = Subscription.objects.filter(ending_date__gte=today)
-
-    # users with less than 3 books and 2 reviews
+    # how many books each user are borrowing
+    #book_not_returned = Count('loan', filter=(Q(loan__returned=False) & Q(loan__reference__ref_type='BK')))
+    # users with at 
     # # nb books not returned
-    #User.objects.filter( (Q(loan__returned=False) & Q(loan__reference__type='BK'))
+    # User.objects.filter( (Q(loan__returned=False) & Q(loan__reference__type='BK'))
+    # Count('Loan', filter=(Q(loan__returned=False) & Q(loan__reference__type='BK')))
     #users_can_borrow = valid_subscriptions_users.intersection(Loan.objects)
 
-    user = forms.ModelMultipleChoiceField(queryset=valid_subscriptions_users,widget=forms.Select())
+    #user = forms.ModelMultipleChoiceField(queryset=valid_subscriptions_users,widget=forms.Select())
+
+    # validation of user field
+    def clean_user(self):
+
+        user = self.cleaned_data["user"]
+
+        # check if the user has a subscription
+        today = datetime.date.today()
+        valid_subscriptions_users = Subscription.objects.filter(ending_date__gte=today).values_list('user__email',flat=True)
+        if user.email not in valid_subscriptions_users:
+            raise ValidationError(
+                    "Cet utilisateur n'a pas d'abonnement à jour"
+                )
+
+        return user
+
+    # validation of beginning_date
+    def clean_beginning_date(self):
+
+        date = self.cleaned_data["beginning_date"]
+
+        # check if the beginning date is superioir to today
+        today = datetime.date.today()
+        if date<today:
+            raise ValidationError(
+                    "La date de début d'emprunt doit être postérieure à la date du jour"
+                )
+
+        return date
+
+    # validation of all fields
+    def clean(self):
+        cleaned_data = super().clean()
+        user = cleaned_data.get("user")
+        reference_value = cleaned_data.get("reference")
+        beginning_date = cleaned_data.get("beginning_date")
+        ending_date = cleaned_data.get("ending_date")
+
+        reference = Reference.objects.get(name=reference_value)
+
+        # check if the book can be borrowed
+        not_borrowable_ref = Reference.objects.filter(loan__returned=False).union(Reference.objects.filter(borrowable=False)).values_list('name',flat=True)
+        if reference.name in not_borrowable_ref:
+            self.add_error('reference', "Ce livre n'est pas disponible pour le moment")
+            
+
+        # check if the user can borrow this type of reference
+        if reference.ref_type=='BK':
+            # books borrowing by the user
+            nb_books_not_returned = Loan.objects.filter(
+                    user__email=user
+                ).filter(
+                    Q(returned=False) 
+                    & 
+                    Q(reference__ref_type='BK')
+                ).count() 
+            
+            # check if is borrowing less than 3 books
+            if nb_books_not_returned>=3:
+                self.add_error('reference', "Cet utilisateur emprunte déjà 3 livres")
+        else:
+            # reviews borrowing by the user
+            nb_reviews_not_returned = Loan.objects.filter(
+                    user__email=user
+                ).filter(
+                    Q(returned=False)
+                ).exclude(
+                    Q(reference__ref_type='BK')
+                ).count() 
+
+            # check if is borrowing less than 2 reviews
+            if nb_reviews_not_returned>=2:
+                self.add_error('reference', "Cet utilisateur emprunte déjà 2 revues")
+
+        
+        # check if the ending_date is 30 days after beginning date
+        if ending_date!=(datetime.timedelta(days=30)+beginning_date):
+            self.add_error('ending_date', "La durée d'un emprunt est de 30 jours")
+
+        return cleaned_data
+    
+
+    
+
 
 class LoanAdmin(admin.ModelAdmin):
     # The form to add Subscription instances
@@ -107,8 +203,6 @@ class UserCreationForm(forms.ModelForm):
     fields, plus a repeated password."""
     password1 = forms.CharField(label='Password', widget=forms.PasswordInput)
     password2 = forms.CharField(label='Password confirmation', widget=forms.PasswordInput)
-    
-    test = forms.CharField(label="L'utilisateur a-t-il bien payé?", widget=forms.CheckboxInput)
 
     class Meta:
         model = User
