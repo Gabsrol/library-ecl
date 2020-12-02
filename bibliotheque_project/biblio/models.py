@@ -124,7 +124,7 @@ class Subscription(models.Model):
 class Loan(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, default="")
     reference = models.ForeignKey(Reference, on_delete=models.CASCADE, default="")
-    beginning_date = models.DateField()
+    beginning_date = models.DateField(default=timezone.now())
     ending_date = models.DateField()
     returned = models.BooleanField(default = False)
 

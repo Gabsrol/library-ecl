@@ -99,7 +99,7 @@ class LoanCreationForm(forms.ModelForm):
         # check if the user has a subscription
         today = datetime.date.today()
         valid_subscriptions_users = Subscription.objects.filter(ending_date__gte=today).values_list('user__email',flat=True)
-        if user.email not in valid_subscriptions_users:
+        if user not in valid_subscriptions_users:
             raise ValidationError(
                     "Cet utilisateur n'a pas d'abonnement à jour"
                 )
