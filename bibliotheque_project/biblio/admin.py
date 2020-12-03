@@ -32,6 +32,8 @@ class ReferenceAdmin(admin.ModelAdmin):
 
 
 
+
+
 ######### Subscription ###########
 
 # a form to create a subscription
@@ -67,9 +69,18 @@ class SubscriptionAdmin(admin.ModelAdmin):
     # The fields to be used in displaying the Subscription model.
     list_display = ('user',  'beginning_date', 'ending_date')
 
-# to add a subscription from user creation but I didn't find how to make it optionnal
-#class SubscriptionInline(admin.TabularInline):
-    #model = Subscription
+# to add a subscription info on user profil
+class SubscriptionInline(admin.TabularInline):
+    model = Subscription 
+    readonly_fields = ["ending_date", "beginning_date"]
+
+
+
+
+
+
+
+
 
 
 ######### Loan ###########
@@ -80,6 +91,7 @@ class LoanCreationForm(forms.ModelForm):
 
     class Meta:
         model = Loan
+        #fields = '__all__'
         exclude = ('returned',)
 
     ###### we don't use it here to allow
@@ -169,31 +181,27 @@ class LoanAdmin(admin.ModelAdmin):
         for q in queryset:
             # if not already returned
             if not q.returned:
-
-                today = datetime.date.today()
-                # apply penalties if the book is returned 3 days later
-                if (today-datetime.timedelta(days=3))>q.ending_date:
-                    q.user.balance -= abs((today - q.ending_date).days)
-                    q.user.save()
-
-                # add to bad borrowers if it is the third time he is late
-                nb_lates = Loan.objects.filter(
-                        user=q.user # find the user
-                    ).filter(
-                        ending_date__gte=F('beginning_date')+datetime.timedelta(days=30) # ref returned in late
-                    ).filter(
-                        beginning_date__gte=today-datetime.timedelta(weeks=52) # only last year borrowings
-                    ).count()
-                if nb_lates>=3:
-                    bad_user = Bad_borrower.objects.create(user=q.user)
-                    bad_user.save()
-
-
                 q.returned='True' #mark as returned
-                q.ending_date = datetime.date.today() #change ending date to today
                 q.save()
 
     return_loan.short_description = "Retourner les ouvrages sélectionnés"
+
+
+# to add a user borrowings on user profil
+class LoanInline(admin.TabularInline):
+    model = Loan 
+
+    readonly_fields = ["reference","beginning_date","ending_date","returned"]
+
+    def has_add_permission(self, request, s):
+        return False
+
+    def has_delete_permission(self, request, s):
+        return False
+
+
+
+
 
 
 
@@ -203,8 +211,9 @@ class LoanAdmin(admin.ModelAdmin):
 class Bad_borrowerAdmin(admin.ModelAdmin):
     pass
 
-#class Bad_borrowerInline(admin.TabularInline):
-#    model = Bad_borrower
+class Bad_borrowerInline(admin.TabularInline):
+    model = Bad_borrower
+    readonly_fields = ["ending_date"]
 
 
 ######### User ###########
@@ -273,20 +282,14 @@ class UserAdmin(BaseUserAdmin):
         ('Personal info', {'fields': ( 'first_name', 'last_name', 'social_status','balance')}),
         ('Permissions', {'fields': ('is_admin',)}),
     )
-    # add_fieldsets is not a standard ModelAdmin attribute. UserAdmin
-    # overrides get_fieldsets to use this attribute when creating a user.
-    add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': ('email',  'first_name', 'last_name', 'social_status', 'password1', 'password2'),
-        }),
-    )
+    
     search_fields = ('email',)
     ordering = ('email',)
     filter_horizontal = ()
 
 
     actions = ['pay_balance']
+    inlines = [SubscriptionInline,LoanInline,Bad_borrowerInline]
 
     # function to return one or several selected references
     def pay_balance(modeladmin, request, queryset):

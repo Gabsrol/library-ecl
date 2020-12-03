@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.contrib.auth.models import (
     BaseUserManager, AbstractBaseUser
 )
+from django.db.models import F
 
 
 class MyUserManager(BaseUserManager):
@@ -89,7 +90,10 @@ class User(AbstractBaseUser):
         # Simplest possible answer: All admins are staff
         return self.is_admin
 
-#la classe ouvrage
+
+
+
+
 class Reference(models.Model):
     author = models.CharField(max_length=100)
     name = models.CharField(max_length=200)
@@ -123,11 +127,56 @@ class Subscription(models.Model):
 
 
 class Loan(models.Model):
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE, default="")
     reference = models.ForeignKey(Reference, on_delete=models.CASCADE, default="")
     beginning_date = models.DateField(default=timezone.now())
     ending_date = models.DateField(default=datetime.timedelta(days=30)+timezone.now())
     returned = models.BooleanField(default = False)
+
+
+    # to keep in memory the last value of returned because we want to make an action when returned changes from False to True
+    __original_returned = None
+
+    def __init__(self, *args, **kwargs):
+        super(Loan, self).__init__(*args, **kwargs)
+        self.__original_returned = self.returned
+        
+
+
+    # override save method to apply penalties or add bad borrower
+    def save(self, *args, **kwargs):
+
+        print(self.returned,self.__original_returned!=self.returned)
+        print(self.ending_date)
+        if self.returned:
+            if self.__original_returned!=self.returned:
+                print('changed')
+                today = datetime.date.today()
+                # apply penalties if the book is returned 3 days later
+                if (today-datetime.timedelta(days=3))>self.ending_date:
+                    print('penalty')
+                    self.user.balance -= abs((today - self.ending_date).days)
+                    self.user.save()
+
+                self.ending_date = datetime.date.today() #change ending date to today
+                # add to bad borrowers if it is the third time he is late
+                nb_lates = Loan.objects.filter(
+                        user=self.user # find the user
+                    ).filter(
+                        ending_date__gte=F('beginning_date')+datetime.timedelta(days=30) # ref returned in late
+                    ).filter(
+                        beginning_date__gte=today-datetime.timedelta(weeks=52) # only last year borrowings
+                    ).count()
+                if nb_lates>=3:
+                    print('bad')
+                    bad_user = Bad_borrower.objects.create(user=self.user)
+                    bad_user.save()
+        
+        print(self.ending_date)
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        self.__original_returned = self.returned
+
 
     def __str__(self):
         return self.reference.name
