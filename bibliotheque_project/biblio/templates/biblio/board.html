@@ -5,16 +5,27 @@
     <div class="row">
         <div class="col">
             <h2>Abonnement</h2>
-            {% if subscription is None %}
+            {% if sub_state is None %}
                 <p>Vous n'avez pas d'abonnement</p>
+                <a href="{% url 'biblio:subscribe'%}" class="btn btn-outline-success btn-sm" role="button">Souscrire</a>
             {% else %}
+                <p>Votre abonnement est {{sub_state}}.</p>
                 <p>Date de fin : {{subscription.ending_date}}</p>
-                <p>Prix de l'abonnement : {{subscription.user.social_status}}</p>
+                <p>Prix de l'abonnement : {{price}}</p>
+                <a href="{% url 'biblio:subscribe'%}" class="btn btn-outline-success btn-sm" role="button">Renouveler</a>
             {% endif %}
-            <a href="{% url 'biblio:board' %}" class="btn btn-outline-success btn-sm" role="button">Souscrire</a>
+
         </div>
         <div class="col">
             <h2>Solde</h2>
+            <p>Votre solde est de : {{solde}}€</p>
+            {% if solde is 0 %}
+            {% else %}
+            <form method="POST" action ="{% url 'biblio:board'%}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">Régler votre solde</button>
+            </form>
+            {% endif %}
         </div>
     </div>
 
@@ -41,9 +52,10 @@
                     <td>{{ borrowing.reference.ref_type }}</td>
                     <td>{{ borrowing.ending_date }}</td>
                     {% if borrowing in not_returned_borrowings %}
-                      <td><a href="{% url 'biblio:board' %}" class="btn btn-outline-success btn-sm" role="button">Retourner</a></td>
+                      <td><i class="fas fa-check-circle" style="color:green"></i></td>
+                      <!-- <td><a href="{% url 'biblio:board' %}" class="btn btn-outline-success btn-sm" role="button">Retourner</a></td> -->
                     {% else %}
-                      <td>Returned</td>
+                    <td><i class="fas fa-times-circle" style="color:red"></i></td>
                     {% endif %}
                   </tr>
                   {% endfor %}

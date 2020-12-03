@@ -153,7 +153,7 @@ class LoanCreationForm(forms.ModelForm):
             self.add_error('ending_date', "La durée d'un emprunt est de 30 jours")
 
         return cleaned_data
-    
+
 
 class LoanAdmin(admin.ModelAdmin):
     # The form to add Subscription instances
@@ -178,9 +178,11 @@ class LoanAdmin(admin.ModelAdmin):
 
                 # add to bad borrowers if it is the third time he is late
                 nb_lates = Loan.objects.filter(
-                        user=q.user
+                        user=q.user # find the user
                     ).filter(
-                        ending_date__gte=F('beginning_date')+datetime.timedelta(days=30)
+                        ending_date__gte=F('beginning_date')+datetime.timedelta(days=30) # ref returned in late
+                    ).filter(
+                        beginning_date__gte=today-datetime.timedelta(weeks=52) # only last year borrowings
                     ).count()
                 if nb_lates>=3:
                     bad_user = Bad_borrower.objects.create(user=q.user)
@@ -192,6 +194,7 @@ class LoanAdmin(admin.ModelAdmin):
                 q.save()
 
     return_loan.short_description = "Retourner les ouvrages sélectionnés"
+
 
 
 
@@ -245,7 +248,7 @@ class UserChangeForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ('email', 'password',  'first_name', 'last_name', 'social_status', 'is_active', 'is_admin')
+        fields = ('email', 'password',  'first_name', 'last_name', 'social_status', 'is_active', 'is_admin','balance')
 
     def clean_password(self):
         # Regardless of what the user provides, return the initial value.
@@ -267,7 +270,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ('is_admin',)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal info', {'fields': ( 'first_name', 'last_name', 'social_status',)}),
+        ('Personal info', {'fields': ( 'first_name', 'last_name', 'social_status','balance')}),
         ('Permissions', {'fields': ('is_admin',)}),
     )
     # add_fieldsets is not a standard ModelAdmin attribute. UserAdmin
@@ -281,6 +284,7 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ('email',)
     ordering = ('email',)
     filter_horizontal = ()
+
 
     actions = ['pay_balance']
 
