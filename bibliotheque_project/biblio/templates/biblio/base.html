@@ -34,7 +34,7 @@
           <a class="navbar-brand">Bibliothèque</a>
         </div>
         <ul class="navbar-nav">
-          <li class="nav-item active"><a class = "nav-link" href="{% url 'index'%}">Accueil</a></li>
+          <li class="nav-item"><a class = "nav-link" href="{% url 'index'%}">Accueil</a></li>
           <li class="nav-item"><a class = "nav-link" href="/admin">Espace Administrateur</a></li>
           <li class="nav-item"><a class = "nav-link" href="{% url 'biblio:board'%}">Tableau de bord</a></li>
           {% if user.is_authenticated %}

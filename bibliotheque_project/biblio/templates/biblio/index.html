@@ -1,12 +1,16 @@
 {% extends 'biblio/base.html' %}
     
 {% block content %}
-  <form action="{% url 'index' %}" method='get' accept-charset="utf-8">
-    {% csrf_token %}
-    <div class="input-group">
-      <input type="text" class="form-control" placeholder="Taper votre recherche" name="query">
+  <div class="row">
+    <div class="col">
+      <div class="card card-body">
+      <form method="get">
+              {{tableFilter.form}}
+            <button class="btn btn-outline-primary" type="submit">Rechercher</button>
+      </form>
+      </div>
     </div>
-  </form>
+</div>
   {% include 'biblio/list.html' %}
 
 {% endblock %}

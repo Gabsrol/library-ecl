@@ -6,23 +6,30 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse 
 from django.db.models import Q
 from django.contrib import messages
+from .filters import ReferenceFilter
 import datetime
   
 
 def index(request):
 
-    query = request.GET.get('query')
+    #query = request.GET.get('query')
 
-    if not query :
-        references = Reference.objects.all().order_by('name')
-    else :
-        references = Reference.objects.filter(Q(name__icontains=query) | Q(author__icontains=query)).order_by('name')
+    #if not query :
+    #    references = Reference.objects.all().order_by('name')
+    #else :
+    #    references = Reference.objects.filter(Q(name__icontains=query) | Q(author__icontains=query)).order_by('name')
+
+    references = Reference.objects.all().order_by('name')
+
+    tableFilter = ReferenceFilter(request.GET, queryset=references)
+    references = tableFilter.qs
 
     not_available_references = references.filter(loan__returned=False).union(references.filter(borrowable=False))
 
     context = {
         'references': references,
         'not_available_references': not_available_references,
+        'tableFilter': tableFilter,
     }
     
     return render(request, 'biblio/index.html', context)

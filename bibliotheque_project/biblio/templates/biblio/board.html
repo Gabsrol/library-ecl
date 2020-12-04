@@ -28,7 +28,7 @@
                 {% else %}
                 <form method="POST" action ="{% url 'biblio:board'%}" enctype="multipart/form-data">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-success">Régler votre solde</button>
+                    <button type="submit" class="btn btn-outline-success btn-sm">Régler votre solde</button>
                 </form>
                 {% endif %}
             </div>
@@ -57,7 +57,7 @@
                   <tr>
                     <td>{{ borrowing.reference.name }}</td>
                     <td>{{ borrowing.reference.author }}</td>
-                    <td>{{ borrowing.reference.ref_type }}</td>
+                    <td>{{ borrowing.reference.get_ref_type_display }}</td>
                     <td>{{ borrowing.beginning_date }}</td>
                     <td>{{ borrowing.ending_date }}</td>
                     {% if borrowing in not_returned_borrowings %}

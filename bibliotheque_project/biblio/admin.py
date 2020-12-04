@@ -95,8 +95,8 @@ class LoanCreationForm(forms.ModelForm):
 
     class Meta:
         model = Loan
-        #fields = '__all__'
-        exclude = ('returned',)
+        fields = '__all__'
+        #exclude = ('returned',)
 
     ###### we don't use it here to allow
     # validation of beginning_date
