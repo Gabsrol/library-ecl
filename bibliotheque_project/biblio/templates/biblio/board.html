@@ -4,28 +4,35 @@
     <h1>Tableau de Bord de {{ user.first_name }} {{ user.last_name }}</h1>
     <div class="row">
         <div class="col">
-            <h2>Abonnement</h2>
-            {% if sub_state is None %}
-                <p>Vous n'avez pas d'abonnement</p>
-                <a href="{% url 'biblio:subscribe'%}" class="btn btn-outline-success btn-sm" role="button">Souscrire</a>
-            {% else %}
-                <p>Votre abonnement est {{sub_state}}.</p>
-                <p>Date de fin : {{subscription.ending_date}}</p>
-                <p>Prix de l'abonnement : {{price}}</p>
-                <a href="{% url 'biblio:subscribe'%}" class="btn btn-outline-success btn-sm" role="button">Renouveler</a>
-            {% endif %}
-
+          <div class="card">
+            <div class="card-header">Abonnement</div>
+              <div class="card-body">
+                {% if sub_state is None %}
+                    <p>Vous n'avez pas d'abonnement</p>
+                    <a href="{% url 'biblio:subscribe'%}" class="btn btn-outline-success btn-sm" role="button">Souscrire</a>
+                {% else %}
+                    <p>Votre abonnement est {{sub_state}}.</p>
+                    <p>Date de fin : {{subscription.ending_date}}</p>
+                    <p>Prix de l'abonnement : {{price}}</p>
+                    <a href="{% url 'biblio:subscribe'%}" class="btn btn-outline-success btn-sm" role="button">Renouveler</a>
+                {% endif %}
+              </div>
+          </div>
         </div>
         <div class="col">
-            <h2>Solde</h2>
-            <p>Votre solde est de : {{solde}}€</p>
-            {% if solde is 0 %}
-            {% else %}
-            <form method="POST" action ="{% url 'biblio:board'%}" enctype="multipart/form-data">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success">Régler votre solde</button>
-            </form>
-            {% endif %}
+          <div class="card">
+            <div class="card-header">Solde</div>
+              <div class="card-body">
+                <p>Votre solde est de : {{solde}}€</p>
+                {% if solde is 0 %}
+                {% else %}
+                <form method="POST" action ="{% url 'biblio:board'%}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">Régler votre solde</button>
+                </form>
+                {% endif %}
+            </div>
+          </div>
         </div>
     </div>
 

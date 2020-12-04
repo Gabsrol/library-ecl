@@ -57,7 +57,7 @@ def board(request):
         price = 'Gratuit'
 
     # get user borrowings
-    borrowings = Loan.objects.filter(user__email=user.email)
+    borrowings = Loan.objects.filter(user__email=user.email).order_by('beginning_date')
     not_returned_borrowings = Loan.objects.filter(user__email=user.email).filter(returned=False)
 
     if request.method == 'POST':
@@ -186,7 +186,7 @@ def subscribe(request):
 
         if Subscription.objects.filter(user__email=user.email).exists():
             subscription = Subscription.objects.get(user__email=user.email)
-            subscription.ending_date = datetime.date.today() + datetime.timedelta(weeks=52)
+            subscription.ending_date = max(datetime.date.today(),subscription.ending_date) + datetime.timedelta(weeks=52)
             subscription.save()
             
         else:
