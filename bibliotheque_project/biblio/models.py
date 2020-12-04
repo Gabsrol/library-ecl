@@ -61,7 +61,7 @@ class User(AbstractBaseUser):
     social_status = models.CharField(max_length=2, choices=SOCIAL_STATUS, default='AU')
     first_name = models.CharField(max_length=60, default='first_name')
     last_name = models.CharField(max_length=60, default='last_name')
-    balance = models.IntegerField(max_length=5, default=0, verbose_name="Solde €")
+    balance = models.IntegerField(default=0, verbose_name="Solde €")
 
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
@@ -114,10 +114,12 @@ class Reference(models.Model):
         return self.name
 
 
+def now_plus_1_year():
+    return(timezone.timedelta(weeks=52) + timezone.now())
 
 class Subscription(models.Model):
-    beginning_date = models.DateField(default=timezone.now())
-    ending_date = models.DateField(default=(datetime.timedelta(weeks=52)+timezone.now()))
+    beginning_date = models.DateField(default=timezone.now)
+    ending_date = models.DateField(default=now_plus_1_year)
     #A priori le one-to-one accepte le one-to-zero : un client peut avoir un abonnement / un abonnement est forcément lié à un client
     user = models.OneToOneField(User, on_delete=models.CASCADE, default="")
 
@@ -125,13 +127,15 @@ class Subscription(models.Model):
         return self.user.email
 
 
+def now_plus_30_days():
+    return(timezone.timedelta(days=30) + timezone.now())
 
 class Loan(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, default="")
     reference = models.ForeignKey(Reference, on_delete=models.CASCADE, default="")
-    beginning_date = models.DateField(default=timezone.now())
-    ending_date = models.DateField(default=datetime.timedelta(days=30)+timezone.now())
+    beginning_date = models.DateField(default=timezone.now)
+    ending_date = models.DateField(default=now_plus_30_days)
     returned = models.BooleanField(default = False)
 
 
@@ -182,10 +186,12 @@ class Loan(models.Model):
         return self.reference.name
 
 
+def now_plus_2_year():
+    return(timezone.timedelta(weeks=101) + timezone.now())
 
 class Bad_borrower(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, default="")
-    ending_date = models.DateField(default=datetime.timedelta(weeks=101)+timezone.now())
+    ending_date = models.DateField(default=now_plus_2_year)
 
     def __str__(self):
         return self.user.email
