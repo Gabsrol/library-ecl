@@ -14,6 +14,7 @@ from django.http import HttpResponseRedirect
 from django.db.models import Q
 from django.db.models import F
 from django.contrib import messages
+from django.utils.safestring import mark_safe
 from django.urls import reverse 
 import datetime
 
@@ -21,15 +22,34 @@ import datetime
 from biblio.models import User, Reference, Subscription, Bad_borrower, Loan
 
 
-######### Reference ###########
+#################### Reference ####################
 
 class ReferenceCreationForm(forms.ModelForm):
     """A form for creating new references."""
     pass
 
+
+
 class ReferenceAdmin(admin.ModelAdmin):
     form = ReferenceCreationForm
-    list_display = ('name',  'author', 'publish_date', 'ref_type', 'borrowable')
+    list_display = ('name',  'author', 'publish_date', 'ref_type','available_link')
+
+    list_filter = ('name',  'author', 'publish_date', 'ref_type')
+
+    def available_link(self, ref):
+
+        borrowed = Loan.objects.filter(Q(reference=ref) & Q(returned=False)).exists()
+
+        if not borrowed and ref.borrowable:
+            path = "admin:biblio_loan_add"
+            url = reverse(path)
+            return mark_safe("<a href='{}'>Emprunter</a>".format(url))
+
+        else :
+            return ('Non disponible')
+
+    available_link.short_description = 'Disponibilité'
+
 
 
 
@@ -118,6 +138,9 @@ class SubscriptionInline(admin.TabularInline):
     model = Subscription 
     readonly_fields = ["ending_date", "beginning_date"]
 
+    def has_delete_permission(self, request, s):
+        return False
+
 
 
 
@@ -138,7 +161,11 @@ class LoanCreationForm(forms.ModelForm):
         fields = '__all__'
         #exclude = ('returned',)
 
-    ###### we don't use it here to allow
+    # only available reference
+    available_ref = Reference.objects.filter(Q(loan__returned=True) & Q(borrowable=True)).distinct()
+    reference = forms.ModelChoiceField(queryset=available_ref,required=True)
+
+    ###### we don't use it here to allow user to test our data ######
     # validation of beginning_date
     #def clean_beginning_date(self):
 
@@ -170,12 +197,6 @@ class LoanCreationForm(forms.ModelForm):
             self.add_error('user',
                     "Cet utilisateur n'a pas d'abonnement à jour"
                 )
-
-        # check if the book can be borrowed
-        not_borrowable_ref = Reference.objects.filter(loan__returned=False).union(Reference.objects.filter(borrowable=False)).values_list('name',flat=True)
-        if reference.name in not_borrowable_ref:
-            self.add_error('reference', "Ce livre n'est pas disponible pour le moment")
-            
 
         # check if the user can borrow this type of reference
         if reference.ref_type=='BK':
@@ -217,7 +238,9 @@ class LoanAdmin(admin.ModelAdmin):
     form = LoanCreationForm
 
     # The fields to be used in displaying the Borrowed model.
-    list_display = ('reference', 'user', 'beginning_date', 'ending_date','returned')
+    list_display = ('reference', 'user_link', 'beginning_date', 'ending_date','returned')
+
+    list_filter = ('user','returned')
 
     actions = ['return_loan']
 
@@ -231,12 +254,30 @@ class LoanAdmin(admin.ModelAdmin):
 
     return_loan.short_description = "Retourner les ouvrages sélectionnés"
 
+    def user_link(self, loan):
+
+        path = "admin:biblio_user_change"
+        url = reverse(path,args=(loan.user.id,))
+        return mark_safe("<a href='{}'>{}</a>".format(url,loan.user.email))
+
+    user_link.short_description = 'Utilisateur'
+
 
 # to add a user borrowings on user profil
 class LoanInline(admin.TabularInline):
     model = Loan 
+    fieldsets = [
+        (None, {'fields': ["loan_link","beginning_date","ending_date","returned"]})
+        ]
+    readonly_fields = ["loan_link","beginning_date","ending_date","returned"]
 
-    readonly_fields = ["reference","beginning_date","ending_date","returned"]
+    def loan_link(self, loan):
+
+        path = "admin:biblio_loan_change"
+        url = reverse(path,args=(loan.id,))
+        return mark_safe("<a href='{}'>{}</a>".format(url,loan.reference.name))
+
+    loan_link.short_description = 'Ouvrage'
 
     def has_add_permission(self, request, s):
         return False
@@ -251,17 +292,26 @@ class LoanInline(admin.TabularInline):
 
 
 
-######### Bad_borrower ###########
+
+################## Bad_borrower ####################
 
 class Bad_borrowerAdmin(admin.ModelAdmin):
-    pass
+
+    list_display = ('user', 'ending_date')
 
 class Bad_borrowerInline(admin.TabularInline):
     model = Bad_borrower
     readonly_fields = ["ending_date"]
 
+    def has_delete_permission(self, request, s):
+        return False
 
-######### User ###########
+
+
+
+
+
+################## User ####################
 
 # a form to create a new user
 class UserCreationForm(forms.ModelForm):

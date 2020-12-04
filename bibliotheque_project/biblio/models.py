@@ -146,11 +146,11 @@ class Loan(models.Model):
     class Meta:
         verbose_name = "Emprunt"
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, default="")
-    reference = models.ForeignKey(Reference, on_delete=models.CASCADE, default="")
-    beginning_date = models.DateField(default=timezone.now)
-    ending_date = models.DateField(default=now_plus_30_days)
-    returned = models.BooleanField(default = False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default="",verbose_name="Utilisateur")
+    reference = models.ForeignKey(Reference, on_delete=models.CASCADE, default="",verbose_name="Ouvrage")
+    beginning_date = models.DateField(default=timezone.now,verbose_name="Date de début")
+    ending_date = models.DateField(default=now_plus_30_days,verbose_name="Date de fin")
+    returned = models.BooleanField(default = False,verbose_name="Retourné ?")
 
 
     # to keep in memory the last value of returned because we want to make an action when returned changes from False to True
@@ -212,8 +212,8 @@ class Bad_borrower(models.Model):
     class Meta:
         verbose_name = "Mauvais utilisateur"
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE, default="")
-    ending_date = models.DateField(default=now_plus_2_year)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, default="",verbose_name="Utilisateur")
+    ending_date = models.DateField(default=now_plus_2_year,verbose_name="Date de fin")
 
     def __str__(self):
         return self.user.email
