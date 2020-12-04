@@ -43,10 +43,8 @@ class SubscriptionCreationForm(forms.ModelForm):
     # a field to be sure that the admin has been paid by the user
     payment = forms.BooleanField (label="L'utilisateur a-t-il bien payé?",required=True)
 
-    # only users that aren't bad borrowers can have a subscription
-    bad_borrowers = Bad_borrower.objects.all()
-    only_good_borrowers = User.objects.exclude(pk__in=bad_borrowers)
-    user = forms.ModelChoiceField(queryset=only_good_borrowers,widget=forms.Select())
+    #only_good_borrowers = User.objects.exclude(bad_borrowers)
+    #user = forms.ModelChoiceField(queryset=only_good_borrowers,widget=forms.Select())
 
     # validation of all fields
     def clean(self):
@@ -54,6 +52,12 @@ class SubscriptionCreationForm(forms.ModelForm):
 
         beginning_date = cleaned_data.get("beginning_date")
         ending_date = cleaned_data.get("ending_date")
+        user = cleaned_data.get("user")
+
+        # only users that aren't bad borrowers can have a subscription
+        bad_borrowers = Bad_borrower.objects.all().values_list('user__email',flat=True)
+        if str(user) in bad_borrowers :
+            self.add_error('user', "Cet utilisateur est renseigné comme mauvais utilisateur")
         
         # check if the ending_date is 30 days after beginning date
         if ending_date!=(datetime.timedelta(weeks=52)+beginning_date):
@@ -111,6 +115,7 @@ class LoanCreationForm(forms.ModelForm):
 
     # validation of all fields
     def clean(self):
+        
         cleaned_data = super().clean()
         user = cleaned_data.get("user")
         reference = cleaned_data.get("reference")

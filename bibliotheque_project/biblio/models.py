@@ -147,19 +147,14 @@ class Loan(models.Model):
         self.__original_returned = self.returned
         
 
-
     # override save method to apply penalties or add bad borrower
     def save(self, *args, **kwargs):
 
-        print(self.returned,self.__original_returned!=self.returned)
-        print(self.ending_date)
         if self.returned:
             if self.__original_returned!=self.returned:
-                print('changed')
                 today = datetime.date.today()
                 # apply penalties if the book is returned 3 days later
                 if (today-datetime.timedelta(days=3))>self.ending_date:
-                    print('penalty')
                     self.user.balance -= abs((today - self.ending_date).days)
                     self.user.save()
 
@@ -168,16 +163,21 @@ class Loan(models.Model):
                 nb_lates = Loan.objects.filter(
                         user=self.user # find the user
                     ).filter(
-                        ending_date__gte=F('beginning_date')+datetime.timedelta(days=30) # ref returned in late
+                        ending_date__gt=F('beginning_date')+datetime.timedelta(days=30) # ref returned in late
                     ).filter(
                         beginning_date__gte=today-datetime.timedelta(weeks=52) # only last year borrowings
                     ).count()
+
                 if nb_lates>=3:
-                    print('bad')
-                    bad_user = Bad_borrower.objects.create(user=self.user)
+                    # test if the user has already been a bad borrower
+                    if Bad_borrower.objects.filter(user=self.user).exists():
+                        bad_user = Bad_borrower.objects.get(user=self.user)
+                        bad_user.ending_date = today+datetime.timedelta(weeks=101)
+
+                    else :
+                        bad_user = Bad_borrower.objects.create(user=self.user)
                     bad_user.save()
         
-        print(self.ending_date)
         super().save(*args, **kwargs)  # Call the "real" save() method.
         self.__original_returned = self.returned
 
