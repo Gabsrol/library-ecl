@@ -27,6 +27,11 @@ def index(request):
     
     return render(request, 'biblio/index.html', context)
 
+
+
+
+
+
 @login_required
 def board(request):
 
@@ -38,9 +43,9 @@ def board(request):
     if Subscription.objects.filter(user__email=user.email).exists():
         subscription = Subscription.objects.get(user__email=user.email)
         if subscription.ending_date>datetime.date.today():
-            sub_state = 'valid'
+            sub_state = 'valide'
         else :
-            sub_state = 'expired'
+            sub_state = 'expiré'
 
 
     # calculate subscription price
@@ -73,6 +78,11 @@ def board(request):
     }
     
     return render(request, 'biblio/board.html', context)
+
+
+
+
+
 
 @login_required
 def booking(request, reference_id):
@@ -158,9 +168,9 @@ def subscribe(request):
 
 
     # check if the user is not a bad borrower
-    if user.email not in Bad_borrower.objects.all().values_list('user__email',flat=True):
+    if user.email in Bad_borrower.objects.all().values_list('user__email',flat=True):
         messages.warning(request, f"Vous faites partis de la liste mauvais emprunteurs. Vous ne pouvez pas prendre d'abonnements")
-        return HttpResponseRedirect(reverse('biblio:index'))
+        return HttpResponseRedirect(reverse('biblio:board'))
 
     # calculate subscription price
     price = 'Demi-tarif'

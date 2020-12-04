@@ -40,6 +40,7 @@
                     <th scope="col">Titre</th>
                     <th scope="col">Auteur</th>
                     <th scope="col">Type</th>
+                    <th scope="col">Date d'emprunt</th>
                     <th scope="col">Date de Fin</th>
                     <th scope="col">Retourné</th>
                   </tr>
@@ -50,12 +51,12 @@
                     <td>{{ borrowing.reference.name }}</td>
                     <td>{{ borrowing.reference.author }}</td>
                     <td>{{ borrowing.reference.ref_type }}</td>
+                    <td>{{ borrowing.beginning_date }}</td>
                     <td>{{ borrowing.ending_date }}</td>
                     {% if borrowing in not_returned_borrowings %}
-                      <td><i class="fas fa-check-circle" style="color:green"></i></td>
-                      <!-- <td><a href="{% url 'biblio:board' %}" class="btn btn-outline-success btn-sm" role="button">Retourner</a></td> -->
+                      <td><i class="fas fa-times-circle" style="color:red"></i></td>
                     {% else %}
-                    <td><i class="fas fa-times-circle" style="color:red"></i></td>
+                      <td><i class="fas fa-check-circle" style="color:green"></i></td>
                     {% endif %}
                   </tr>
                   {% endfor %}
