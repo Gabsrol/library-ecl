@@ -10,8 +10,11 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.core.exceptions import ValidationError
+from django.http import HttpResponseRedirect
 from django.db.models import Q
 from django.db.models import F
+from django.contrib import messages
+from django.urls import reverse 
 import datetime
 
 
@@ -34,7 +37,7 @@ class ReferenceAdmin(admin.ModelAdmin):
 
 
 
-######### Subscription ###########
+#################### Subscription ####################
 
 # a form to create a subscription
 class SubscriptionCreationForm(forms.ModelForm):
@@ -43,35 +46,72 @@ class SubscriptionCreationForm(forms.ModelForm):
     # a field to be sure that the admin has been paid by the user
     payment = forms.BooleanField (label="L'utilisateur a-t-il bien payé?",required=True)
 
-    #only_good_borrowers = User.objects.exclude(bad_borrowers)
-    #user = forms.ModelChoiceField(queryset=only_good_borrowers,widget=forms.Select())
-
     # validation of all fields
     def clean(self):
         cleaned_data = super().clean()
 
-        beginning_date = cleaned_data.get("beginning_date")
-        ending_date = cleaned_data.get("ending_date")
         user = cleaned_data.get("user")
 
         # only users that aren't bad borrowers can have a subscription
-        bad_borrowers = Bad_borrower.objects.all().values_list('user__email',flat=True)
+        bad_borrowers = Bad_borrower.objects.filter(ending_date__gte=datetime.date.today()).values_list('user__email',flat=True)
         if str(user) in bad_borrowers :
             self.add_error('user', "Cet utilisateur est renseigné comme mauvais utilisateur")
         
-        # check if the ending_date is 30 days after beginning date
-        if ending_date!=(datetime.timedelta(weeks=52)+beginning_date):
-            self.add_error('ending_date', "La durée d'un abonnement est d'1 an")
-
         return cleaned_data
 
 
+
+def subscription_cost(obj):
+    
+    # calculate subscription price
+    price = 'Demi-tarif'
+    if obj.user.social_status=='AU':
+        price = 'Plein Tarif'
+    
+    if obj.user.social_status=='CH':
+        price = 'Gratuit'
+
+    return (price)
+subscription_cost.short_description = 'Montant'
+
+
+
 class SubscriptionAdmin(admin.ModelAdmin):
-    # The form to add Subscription instances
     form = SubscriptionCreationForm
 
     # The fields to be used in displaying the Subscription model.
-    list_display = ('user',  'beginning_date', 'ending_date')
+    list_display = ('user',  'beginning_date', 'ending_date',subscription_cost)
+
+    search_fields = ('user',)
+
+    readonly_fields = ['beginning_date', 'ending_date',subscription_cost]
+
+    actions = ['renew']
+
+    # custom template 
+    change_form_template = "admin/biblio/subscription_change_form.html"
+
+    # function to renew subscription
+    def renew(modeladmin, request, queryset):
+        for q in queryset:
+            
+            q.ending_date+=datetime.timedelta(weeks=52)
+            q.save()
+            messages.success(request, f"L'abonnement de %s a été renouvelé" % (q.user.email))
+
+    renew.short_description = "Renouveler les abonnements"
+
+    def response_change(self, request, obj):
+        if "_renew" in request.POST:
+            # do whatever you want the button to do
+            obj.ending_date+=datetime.timedelta(weeks=52)
+            obj.save()
+            messages.success(request, f"L'abonnement de %s a été renouvelé" % (obj.user.email))
+            return HttpResponseRedirect(reverse('admin:biblio_subscription_changelist'))  # stay on the same detail page
+        return super().response_change(request, obj)
+    
+
+
 
 # to add a subscription info on user profil
 class SubscriptionInline(admin.TabularInline):
@@ -306,6 +346,9 @@ class UserAdmin(BaseUserAdmin):
     pay_balance.short_description = "Marquer que l'utilisateur à régler son solde"
 
 
+
+admin.site.site_header = 'Bibliothèque ECL - Admin'
+admin.site.site_title = 'Bibliothèque ECL - Admin'
 
 # dire à Django quelle table afficher dans la partie admin
 admin.site.register(Reference, ReferenceAdmin)

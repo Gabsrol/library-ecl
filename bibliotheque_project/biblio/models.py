@@ -129,8 +129,8 @@ class Subscription(models.Model):
     class Meta:
         verbose_name = "Abonnement"
 
-    beginning_date = models.DateField(default=timezone.now ,verbose_name="Date d'emprunt")
-    ending_date = models.DateField(default=now_plus_1_year ,verbose_name="Date de retour")
+    beginning_date = models.DateField(default=timezone.now ,verbose_name="Date de début")
+    ending_date = models.DateField(default=now_plus_1_year ,verbose_name="Date de fin")
     #A priori le one-to-one accepte le one-to-zero : un client peut avoir un abonnement / un abonnement est forcément lié à un client
     user = models.OneToOneField(User, on_delete=models.CASCADE, default="", verbose_name="Utilisateur")
 
@@ -199,6 +199,10 @@ class Loan(models.Model):
     def __str__(self):
         return self.reference.name
 
+
+
+
+################## Bad Borrowers ##################
 
 def now_plus_2_year():
     return(timezone.timedelta(weeks=101) + timezone.now())
