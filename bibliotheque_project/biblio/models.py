@@ -166,6 +166,7 @@ class Loan(models.Model):
 
         if self.returned:
             if self.__original_returned!=self.returned:
+
                 today = datetime.date.today()
                 # apply penalties if the book is returned 3 days later
                 if (today-datetime.timedelta(days=3))>self.ending_date:
@@ -182,7 +183,11 @@ class Loan(models.Model):
                         beginning_date__gte=today-datetime.timedelta(weeks=52) # only last year borrowings
                     ).count()
 
+                if self.ending_date > self.beginning_date+datetime.timedelta(days=30):
+                    nb_lates +=1
+                    
                 if nb_lates>=3:
+                    
                     # test if the user has already been a bad borrower
                     if Bad_borrower.objects.filter(user=self.user).exists():
                         bad_user = Bad_borrower.objects.get(user=self.user)

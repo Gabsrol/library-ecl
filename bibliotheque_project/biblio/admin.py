@@ -162,7 +162,7 @@ class LoanCreationForm(forms.ModelForm):
         #exclude = ('returned',)
 
     # only available reference
-    available_ref = Reference.objects.filter(Q(loan__returned=True) & Q(borrowable=True)).distinct()
+    available_ref = Reference.objects.exclude(Q(loan__returned=False) | Q(borrowable=False)).distinct()
     reference = forms.ModelChoiceField(queryset=available_ref,required=True)
 
     ###### we don't use it here to allow user to test our data ######
